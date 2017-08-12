@@ -12,6 +12,8 @@ const double lp_p=0.004;//低级异常发生频率
 const double other_p=0.002;//存储事件发生频率
 const double Qday_p=0.002;//问询发生频率
 const double Qnight_p=0.001;//问询发生频率
+const int waits=25;
+const int waite=30;
 /**辅助设定**/
 typedef int[1,np] id_p;       
 typedef int[1,nn] id_n; 
@@ -439,8 +441,6 @@ return ok;
 		<parameter>const id_p idp</parameter>
 		<declaration>clock cl;
 const int php=5;
-const int waits=25;
-const int waite=30;
 const int delays=5;
 const int delaye=8;</declaration>
 		<location id="id22" x="-3255" y="-3842">
@@ -553,8 +553,6 @@ const int delaye=8;</declaration>
 		<parameter>const id_p idp</parameter>
 		<declaration>clock cl;
 const int pmp=5;
-const int waits=25;
-const int waite=30;
 const int delays=5;
 const int delaye=8;</declaration>
 		<location id="id29" x="-1173" y="-2286">
@@ -667,8 +665,6 @@ const int delaye=8;</declaration>
 		<parameter>const id_p idp</parameter>
 		<declaration>clock cl;
 const int plp=5;
-const int waits=25;
-const int waite=30;
 const int delays=5;
 const int delaye=8;</declaration>
 		<location id="id36" x="-18717" y="-20280">
@@ -1198,7 +1194,6 @@ void outque()
 		<declaration>/**衡量指标**/
 //大概的工作强度等于处理的任务数*12.5/1440
 int dealcount;
-
 int patient;
 clock cl;
 const int ts=10;//护士处理一个警报花的时间
