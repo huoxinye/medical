@@ -6,10 +6,10 @@ int doublepush;
 /**基本设定**/
 const int np=7;//病人人数
 const int nn=2; //护士人数
-const double hp_p=0.002;//呼吸异常发生概率
-const double mp_p=0.003;//血压异常发生频率
-const double lp_p=0.004;//血压异常发生频率
-const double other_p=0.002;//血压异常发生频率
+const double hp_p=0.002;//高级异常发生概率
+const double mp_p=0.003;//中级异常发生频率
+const double lp_p=0.004;//低级异常发生频率
+const double other_p=0.002;//存储事件发生频率
 const double Qday_p=0.002;//问询发生频率
 const double Qnight_p=0.001;//问询发生频率
 /**辅助设定**/
@@ -32,9 +32,9 @@ int mptail=0;
 int lplist[np];//存放LP
 int lptail=0;
 /**异常发生频率**/
-broadcast chan HPS[np+1];//呼吸异常
-broadcast chan MPS[np+1];//血压异常
-broadcast chan LPS[np+1];//血压异常
+broadcast chan HPS[np+1];//高级异常
+broadcast chan MPS[np+1];//中级异常
+broadcast chan LPS[np+1];//低级异常
 /**ar自动报警检测设备发出报警信息**/
 broadcast chan mess_HP[np+1];//高级
 broadcast chan mess_MP[np+1];//中级
