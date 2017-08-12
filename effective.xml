@@ -1,0 +1,1326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**衡量指标**/
+int doublepush; 
+/**基本设定**/
+const int np=7;//病人人数
+const int nn=2; //护士人数
+const double hp_p=0.002;//呼吸异常发生概率
+const double mp_p=0.003;//血压异常发生频率
+const double lp_p=0.004;//血压异常发生频率
+const double other_p=0.002;//血压异常发生频率
+const double Qday_p=0.002;//问询发生频率
+const double Qnight_p=0.001;//问询发生频率
+/**辅助设定**/
+typedef int[1,np] id_p;       
+typedef int[1,nn] id_n; 
+int psn[np];//病人由哪个护士照顾
+bool iniac=1;
+bool iniam=1;
+bool ini[nn],inith[nn];
+/**护士的状态**/
+bool works[nn];//1表示在工作，0表示不在工作
+//bool place[nn];//1表示在工作站，0表示在病房
+int on[np];//哪个护士在床边
+int load[nn];
+/**报警状态**/
+int hplist[np];//存放HP
+int hptail=0;
+int mplist[np];//存放MP
+int mptail=0;
+int lplist[np];//存放LP
+int lptail=0;
+/**异常发生频率**/
+broadcast chan HPS[np+1];//呼吸异常
+broadcast chan MPS[np+1];//血压异常
+broadcast chan LPS[np+1];//血压异常
+/**ar自动报警检测设备发出报警信息**/
+broadcast chan mess_HP[np+1];//高级
+broadcast chan mess_MP[np+1];//中级
+broadcast chan mess_LP[np+1];//中级
+broadcast chan HP[np+1];//高级
+broadcast chan MP[np+1];//中级
+broadcast chan LP[np+1];//中级
+broadcast chan mess_other[np+1];//中级
+/**ac声音**/
+broadcast chan voice;//中央监护器的声音报警
+/**idp患者手动叫护士**/
+broadcast chan connect[nn+1];
+int numberptn,typeptn;
+/**护士工作**/
+broadcast chan deals[np+1];
+broadcast chan deale[np+1];
+//broadcast chan mps[np+1];
+//broadcast chan mpe[np+1];
+//broadcast chan lps[np+1];
+//broadcast chan lpe[np+1];
+broadcast chan overtalk[np+1];
+/**转接收到的信息**/
+broadcast chan transcall;
+int numberntn,typentn;
+/**护士收到转接信息**/
+bool reply[nn];//给出回应
+broadcast chan havereply;//告诉其他护士我准备去了你们不要去
+/**护士去处理**/
+broadcast chan todeal[nn+1];
+int numbersts,loadsts;
+broadcast chan over[nn+1];//任意信息处理结束
+</declaration>
+	<template>
+		<name>BEGIN</name>
+		<declaration>void initbusy(){
+int i=0;
+int j=0;
+int k=0;
+//初始化病人的看护者
+    for (j=1;j&lt;nn;j++){
+        for(i=0;i&lt;np/nn;i++)
+        {
+        psn[k]=j;
+        k=k+1;
+        }
+    };
+     while(k&lt;np)
+    {
+        psn[k]=j;
+        k=k+1;
+    }
+//初始化护士的工作状态对比
+    for(i=0;i&lt;nn;i++)
+   {
+       ini[i]=1;
+       inith[i]=1;
+       //place[i]=1;
+    };
+}</declaration>
+		<location id="id0" x="-1020" y="-654">
+			<name x="-1030" y="-688">end</name>
+		</location>
+		<location id="id1" x="-1258" y="-654">
+			<name x="-1268" y="-688">start</name>
+			<committed/>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-1181" y="-654">initbusy()</label>
+		</transition>
+	</template>
+	<template>
+		<name>AR_hp</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>clock cl;
+bool have;</declaration>
+		<location id="id2" x="-2278" y="-2941">
+			<name x="-2261" y="-2950">waitend</name>
+		</location>
+		<location id="id3" x="-2405" y="-2941">
+			<name x="-2422" y="-2975">alarm</name>
+		</location>
+		<location id="id4" x="-2609" y="-2941">
+			<name x="-2626" y="-2975">help1</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-2771" y="-2941">
+			<name x="-2788" y="-2975">start</name>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-2465" y="-3060">on[idp-1]!=0</label>
+			<label kind="assignment" x="-2490" y="-3026">load[on[idp-1]-1]++</label>
+			<nail x="-2609" y="-3035"/>
+			<nail x="-2278" y="-3035"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-2575" y="-2881">deale[idp]?</label>
+			<nail x="-2278" y="-2856"/>
+			<nail x="-2771" y="-2856"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-2380" y="-2958">deals[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-2720" y="-2941">HPS[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-2584" y="-2941">iniam==1&amp;&amp;on[idp-1]==0</label>
+			<label kind="synchronisation" x="-2559" y="-2967">mess_HP[idp]!</label>
+		</transition>
+	</template>
+	<template>
+		<name>AR_mp</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>clock cl;</declaration>
+		<location id="id6" x="-501" y="-229">
+			<name x="-511" y="-263">waitend</name>
+		</location>
+		<location id="id7" x="-629" y="-229">
+			<name x="-639" y="-263">alarm</name>
+		</location>
+		<location id="id8" x="-833" y="-229">
+			<name x="-843" y="-263">help1</name>
+			<committed/>
+		</location>
+		<location id="id9" x="-986" y="-229">
+			<name x="-1003" y="-263">start</name>
+		</location>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-705" y="-340">on[idp-1]!=0</label>
+			<label kind="assignment" x="-714" y="-314">load[on[idp-1]-1]++</label>
+			<nail x="-833" y="-314"/>
+			<nail x="-501" y="-314"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-782" y="-178">deale[idp]?</label>
+			<nail x="-501" y="-161"/>
+			<nail x="-986" y="-161"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-595" y="-246">deals[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-935" y="-254">MPS[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-807" y="-246">iniam==1&amp;&amp;on[idp-1]==0</label>
+			<label kind="synchronisation" x="-790" y="-263">mess_MP[idp]!</label>
+		</transition>
+	</template>
+	<template>
+		<name>AR_lp</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>clock cl;</declaration>
+		<location id="id10" x="-697" y="-756">
+			<name x="-707" y="-790">waitend</name>
+		</location>
+		<location id="id11" x="-841" y="-756">
+			<name x="-851" y="-790">alarm</name>
+		</location>
+		<location id="id12" x="-1045" y="-756">
+			<name x="-1062" y="-790">help1</name>
+			<committed/>
+		</location>
+		<location id="id13" x="-1198" y="-756">
+			<name x="-1215" y="-790">start</name>
+		</location>
+		<init ref="id13"/>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-824" y="-858">on[idp-1]!=0</label>
+			<label kind="assignment" x="-977" y="-858">load[on[idp-1]-1]++</label>
+			<nail x="-1045" y="-833"/>
+			<nail x="-697" y="-833"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-986" y="-671">deale[idp]?</label>
+			<nail x="-697" y="-671"/>
+			<nail x="-1198" y="-671"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-815" y="-773">deals[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-1155" y="-782">LPS[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-1020" y="-756">iniam==1&amp;&amp;on[idp-1]==0</label>
+			<label kind="synchronisation" x="-994" y="-782">mess_LP[idp]!</label>
+		</transition>
+	</template>
+	<template>
+		<name>AR_other</name>
+		<parameter>const id_p idp</parameter>
+		<location id="id14" x="-102" y="-68">
+			<label kind="exponentialrate" x="-144" y="-51">other_p</label>
+		</location>
+		<init ref="id14"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-42" y="-68">mess_other[idp]!</label>
+			<nail x="-8" y="-8"/>
+			<nail x="17" y="-110"/>
+		</transition>
+	</template>
+	<template>
+		<name>ACON</name>
+		<declaration>int othercount[np];</declaration>
+		<location id="id15" x="0" y="0">
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="select" x="18" y="-89">e:id_p</label>
+			<label kind="synchronisation" x="18" y="-55">mess_other[e]?</label>
+			<label kind="assignment" x="18" y="-38">othercount[e-1]++</label>
+			<nail x="127" y="-76"/>
+			<nail x="102" y="119"/>
+		</transition>
+	</template>
+	<template>
+		<name>AM</name>
+		<declaration>int paitent;</declaration>
+		<location id="id16" x="-8" y="161">
+			<committed/>
+		</location>
+		<location id="id17" x="161" y="-153">
+			<committed/>
+		</location>
+		<location id="id18" x="-212" y="-144">
+			<committed/>
+		</location>
+		<location id="id19" x="0" y="0">
+		</location>
+		<init ref="id19"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id19"/>
+			<label kind="guard" x="10" y="127">iniac==1</label>
+			<label kind="synchronisation" x="10" y="144">MP[paitent]!</label>
+			<label kind="assignment" x="10" y="161">iniam=1</label>
+			<nail x="119" y="161"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id19"/>
+			<label kind="guard" x="18" y="-110">iniac==1</label>
+			<label kind="synchronisation" x="18" y="-93">HP[paitent]!</label>
+			<label kind="assignment" x="18" y="-76">iniam=1</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-110" y="-110">iniac==1</label>
+			<label kind="synchronisation" x="-119" y="-85">LP[paitent]!</label>
+			<label kind="assignment" x="-110" y="-68">iniam=1</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id16"/>
+			<label kind="select" x="-68" y="42">e:id_p</label>
+			<label kind="synchronisation" x="-93" y="59">mess_MP[e]?</label>
+			<label kind="assignment" x="-93" y="76">iniam=0,paitent=e</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id17"/>
+			<label kind="select" x="34" y="-34">e:id_p</label>
+			<label kind="synchronisation" x="18" y="-17">mess_HP[e]?</label>
+			<label kind="assignment" x="18" y="0">iniam=0,paitent=e</label>
+			<nail x="161" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id18"/>
+			<label kind="select" x="-160" y="-51">e:id_p</label>
+			<label kind="synchronisation" x="-160" y="-17">mess_LP[e]?</label>
+			<label kind="assignment" x="-160" y="0">iniam=0,paitent=e</label>
+			<nail x="-25" y="0"/>
+			<nail x="-178" y="0"/>
+		</transition>
+	</template>
+	<template>
+		<name>AC</name>
+		<declaration>const int inter=3;
+clock cl;
+void inlist(int i,int p)
+{
+    if (i==1)
+    {
+        lplist[lptail]=p;
+        lptail++;
+    }
+    if (i==2)
+    {
+        mplist[mptail]=p;
+        mptail++;
+    }
+    if (i==3)
+    {
+        hplist[hptail]=p;
+        hptail++;
+    }
+}
+
+bool voiceok()
+{
+bool ok=1;
+int i;
+for(i=0;i&lt;nn;i++)
+    {
+    if(works[i]==0 and ini[i]==0)
+        {
+        ok=0;
+        }
+    }
+return ok;
+}</declaration>
+		<location id="id20" x="-2779" y="-3128">
+			<name x="-2779" y="-3162">alarm</name>
+			<committed/>
+		</location>
+		<location id="id21" x="-3094" y="-3128">
+			<name x="-3145" y="-3136">start</name>
+		</location>
+		<init ref="id21"/>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-3051" y="-3272">voiceok()==1</label>
+			<label kind="synchronisation" x="-2932" y="-3272">voice!</label>
+			<label kind="assignment" x="-2958" y="-3247">iniac=1</label>
+			<nail x="-2779" y="-3247"/>
+			<nail x="-3094" y="-3247"/>
+			<nail x="-3103" y="-3171"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="select" x="-3017" y="-3086">e:id_p</label>
+			<label kind="synchronisation" x="-2958" y="-3085">LP[e]?</label>
+			<label kind="assignment" x="-2975" y="-3060">inlist(1,e),iniac=0</label>
+			<nail x="-3077" y="-3060"/>
+			<nail x="-2813" y="-3060"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="select" x="-3017" y="-3213">e:id_p</label>
+			<label kind="synchronisation" x="-2958" y="-3213">HP[e]?</label>
+			<label kind="assignment" x="-2975" y="-3188">inlist(3,e),iniac=0</label>
+			<nail x="-3086" y="-3188"/>
+			<nail x="-2822" y="-3187"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="select" x="-3026" y="-3153">e:id_p</label>
+			<label kind="synchronisation" x="-2958" y="-3153">MP[e]?</label>
+			<label kind="assignment" x="-2966" y="-3128">inlist(2,e),iniac=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>P_hp</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>clock cl;
+const int php=5;
+const int waits=25;
+const int waite=30;
+const int delays=5;
+const int delaye=8;</declaration>
+		<location id="id22" x="-3255" y="-3842">
+			<name x="-3265" y="-3876">waitend</name>
+		</location>
+		<location id="id23" x="-4148" y="-3697">
+			<name x="-4158" y="-3731">start</name>
+			<label kind="exponentialrate" x="-4165" y="-3680">hp_p</label>
+		</location>
+		<location id="id24" x="-3595" y="-4020">
+			<name x="-3604" y="-4054">waiting</name>
+		</location>
+		<location id="id25" x="-3893" y="-3698">
+			<name x="-3927" y="-3749">decide</name>
+			<label kind="invariant" x="-3893" y="-3680">cl&lt;=delaye</label>
+		</location>
+		<location id="id26" x="-3595" y="-3697">
+			<name x="-3605" y="-3731">help</name>
+			<committed/>
+		</location>
+		<location id="id27" x="-3595" y="-3842">
+			<name x="-3655" y="-3850">alarm</name>
+			<label kind="invariant" x="-3587" y="-3833">cl&lt;=waite</label>
+		</location>
+		<branchpoint id="id28" x="-3757" y="-3698">
+		</branchpoint>
+		<init ref="id23"/>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id22"/>
+			<label kind="guard" x="-3621" y="-4148">cl&gt;=delays&amp;&amp;on[idp-1]!=0</label>
+			<nail x="-3893" y="-3774"/>
+			<nail x="-3893" y="-4122"/>
+			<nail x="-3153" y="-4122"/>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-3459" y="-3714">deals[idp]?</label>
+			<nail x="-3332" y="-3697"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-3459" y="-3587">deale[idp]?</label>
+			<nail x="-3162" y="-3800"/>
+			<nail x="-3162" y="-3570"/>
+			<nail x="-4148" y="-3570"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-3459" y="-3655">deals[idp]?</label>
+			<nail x="-3893" y="-3638"/>
+			<nail x="-3255" y="-3638"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-3459" y="-4037">deals[idp]?</label>
+			<nail x="-3255" y="-4020"/>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-3459" y="-3859">deals[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="-4037" y="-3723">HPS[idp]!</label>
+			<label kind="assignment" x="-4029" y="-3697">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-3672" y="-3960">cl&gt;=waits&amp;&amp;ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-3655" y="-3936">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-3688" y="-3918">typeptn=3,numberptn=idp,cl=0,doublepush++</label>
+			<nail x="-3502" y="-3936"/>
+			<nail x="-3672" y="-3936"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id28"/>
+			<label kind="guard" x="-3867" y="-3723">cl&gt;=delays&amp;&amp;on[idp-1]==0</label>
+			<label kind="assignment" x="-3842" y="-3698">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-3638" y="-3807">ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-3654" y="-3782">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-3663" y="-3756">typeptn=3,numberptn=idp</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id26"/>
+			<label kind="probability" x="-3697" y="-3697">php</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id24"/>
+			<label kind="probability" x="-3774" y="-3766">10-php</label>
+			<nail x="-3757" y="-4021"/>
+		</transition>
+	</template>
+	<template>
+		<name>P_mp</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>clock cl;
+const int pmp=5;
+const int waits=25;
+const int waite=30;
+const int delays=5;
+const int delaye=8;</declaration>
+		<location id="id29" x="-1173" y="-2286">
+			<name x="-1183" y="-2320">waitend</name>
+		</location>
+		<location id="id30" x="-2116" y="-2142">
+			<name x="-2126" y="-2176">start</name>
+			<label kind="exponentialrate" x="-2133" y="-2125">mp_p</label>
+		</location>
+		<location id="id31" x="-1735" y="-2143">
+			<name x="-1752" y="-2185">decide</name>
+			<label kind="invariant" x="-1769" y="-2126">cl&lt;=delaye</label>
+		</location>
+		<location id="id32" x="-1437" y="-2482">
+			<name x="-1446" y="-2516">waiting</name>
+		</location>
+		<location id="id33" x="-1437" y="-2142">
+			<name x="-1447" y="-2176">help</name>
+			<committed/>
+		</location>
+		<location id="id34" x="-1437" y="-2287">
+			<name x="-1496" y="-2295">alarm</name>
+			<label kind="invariant" x="-1429" y="-2279">cl&lt;=waite</label>
+		</location>
+		<branchpoint id="id35" x="-1599" y="-2143">
+		</branchpoint>
+		<init ref="id30"/>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id29"/>
+			<label kind="guard" x="-1683" y="-2601">cl&gt;=delays&amp;&amp;on[idp-1]!=0</label>
+			<nail x="-1785" y="-2193"/>
+			<nail x="-1785" y="-2575"/>
+			<nail x="-1113" y="-2575"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="-1471" y="-2040">deale[idp]?</label>
+			<nail x="-1088" y="-2286"/>
+			<nail x="-1088" y="-2023"/>
+			<nail x="-2116" y="-2023"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-1318" y="-2082">deals[idp]?</label>
+			<nail x="-1734" y="-2065"/>
+			<nail x="-1173" y="-2065"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-1326" y="-2499">deals[idp]?</label>
+			<nail x="-1420" y="-2482"/>
+			<nail x="-1173" y="-2482"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-1318" y="-2159">deals[idp]?</label>
+			<nail x="-1216" y="-2142"/>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-1318" y="-2303">deals[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-1980" y="-2159">MPS[idp]!</label>
+			<label kind="assignment" x="-1955" y="-2142">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id34"/>
+			<label kind="guard" x="-1514" y="-2398">cl&gt;=waits&amp;&amp;ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-1497" y="-2381">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-1547" y="-2363">typeptn=2,numberptn=idp,cl=0,doublepush++</label>
+			<nail x="-1344" y="-2381"/>
+			<nail x="-1514" y="-2381"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id35"/>
+			<label kind="guard" x="-1692" y="-2168">cl&gt;=delays&amp;&amp;on[idp-1]==0</label>
+			<label kind="assignment" x="-1675" y="-2143">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id34"/>
+			<label kind="guard" x="-1471" y="-2253">ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-1496" y="-2227">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-1505" y="-2201">typeptn=2,numberptn=idp</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id33"/>
+			<label kind="probability" x="-1539" y="-2142">pmp</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id32"/>
+			<label kind="probability" x="-1616" y="-2211">10-pmp</label>
+			<nail x="-1599" y="-2483"/>
+		</transition>
+	</template>
+	<template>
+		<name>P_lp</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>clock cl;
+const int plp=5;
+const int waits=25;
+const int waite=30;
+const int delays=5;
+const int delaye=8;</declaration>
+		<location id="id36" x="-18717" y="-20280">
+			<name x="-18727" y="-20314">waitend</name>
+		</location>
+		<location id="id37" x="-19542" y="-20136">
+			<name x="-19552" y="-20170">start</name>
+			<label kind="exponentialrate" x="-19569" y="-20119">lp_p</label>
+		</location>
+		<location id="id38" x="-19278" y="-20137">
+			<name x="-19295" y="-20179">decide</name>
+			<label kind="invariant" x="-19311" y="-20119">cl&lt;=delaye</label>
+		</location>
+		<location id="id39" x="-18980" y="-20425">
+			<name x="-18963" y="-20469">waiting</name>
+		</location>
+		<location id="id40" x="-18980" y="-20136">
+			<name x="-18990" y="-20170">help</name>
+			<committed/>
+		</location>
+		<location id="id41" x="-18980" y="-20281">
+			<name x="-19040" y="-20288">alarm</name>
+			<label kind="invariant" x="-18972" y="-20273">cl&lt;=waite</label>
+		</location>
+		<branchpoint id="id42" x="-19142" y="-20137">
+		</branchpoint>
+		<init ref="id37"/>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id36"/>
+			<label kind="guard" x="-19014" y="-20510">cl&gt;=delays&amp;&amp;on[idp-1]!=0</label>
+			<nail x="-19286" y="-20493"/>
+			<nail x="-18649" y="-20493"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id37"/>
+			<label kind="synchronisation" x="-18896" y="-20025">deale[idp]?</label>
+			<nail x="-18657" y="-20280"/>
+			<nail x="-18657" y="-20008"/>
+			<nail x="-19543" y="-20008"/>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-18896" y="-20085">deals[idp]?</label>
+			<nail x="-19277" y="-20068"/>
+			<nail x="-18726" y="-20068"/>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-18887" y="-20152">deals[idp]?</label>
+			<nail x="-18776" y="-20136"/>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-18861" y="-20442">deals[idp]?</label>
+			<nail x="-18716" y="-20425"/>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-18862" y="-20297">deals[idp]?</label>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="-19414" y="-20162">LPS[idp]!</label>
+			<label kind="assignment" x="-19405" y="-20136">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-19057" y="-20400">cl&gt;=waits&amp;&amp;ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-19031" y="-20374">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-19073" y="-20357">typeptn=1,numberptn=idp,cl=0,doublepush++</label>
+			<nail x="-18887" y="-20375"/>
+			<nail x="-19057" y="-20375"/>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id42"/>
+			<label kind="guard" x="-19235" y="-20161">cl&gt;=delays&amp;&amp;on[idp-1]==0</label>
+			<label kind="assignment" x="-19218" y="-20137">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-19023" y="-20246">ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-19039" y="-20221">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-19048" y="-20204">typeptn=1,numberptn=idp</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id40"/>
+			<label kind="probability" x="-19082" y="-20136">plp</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id39"/>
+			<label kind="probability" x="-19159" y="-20205">10-plp</label>
+			<nail x="-19141" y="-20426"/>
+		</transition>
+	</template>
+	<template>
+		<name>P_ask</name>
+		<parameter>const id_p idp</parameter>
+		<declaration>/**辅助**/
+clock cl;</declaration>
+		<location id="id43" x="127" y="-34">
+			<name x="117" y="-68">help</name>
+		</location>
+		<location id="id44" x="-154" y="-9">
+			<name x="-170" y="-42">ddecide</name>
+			<label kind="exponentialrate" x="-161" y="8">Qday_p</label>
+		</location>
+		<location id="id45" x="-145" y="-95">
+			<name x="-171" y="-136">ndecide</name>
+			<label kind="exponentialrate" x="-162" y="-77">Qnight_p</label>
+		</location>
+		<location id="id46" x="-519" y="-52">
+			<name x="-529" y="-86">start</name>
+			<urgent/>
+		</location>
+		<init ref="id46"/>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id46"/>
+			<label kind="guard" x="-205" y="68">cl&lt;1440</label>
+			<label kind="synchronisation" x="-222" y="42">overtalk[idp]?</label>
+			<nail x="127" y="59"/>
+			<nail x="-519" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id46"/>
+			<label kind="guard" x="-188" y="-187">cl&gt;=1440</label>
+			<label kind="synchronisation" x="-69" y="-187">overtalk[idp]?</label>
+			<label kind="assignment" x="-307" y="-196">cl=0</label>
+			<nail x="127" y="-170"/>
+			<nail x="-519" y="-170"/>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id43"/>
+			<label kind="guard" x="-60" y="-43">ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-69" y="-17">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-77" y="0">numberptn=idp,typeptn=0</label>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-417" y="-77">cl&gt;1200&amp;&amp;cl&lt;1440</label>
+			<nail x="-188" y="-52"/>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-400" y="-112">cl&gt;=0&amp;&amp;cl&lt;480</label>
+			<nail x="-477" y="-94"/>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-409" y="-26">cl&gt;=480&amp;&amp;cl&lt;=1200</label>
+			<nail x="-485" y="-10"/>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id43"/>
+			<label kind="guard" x="-42" y="-85">ini[psn[idp-1]-1]</label>
+			<label kind="synchronisation" x="-86" y="-119">connect[psn[idp-1]]!</label>
+			<label kind="assignment" x="-103" y="-102">numberptn=idp,typeptn=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>AD</name>
+		<parameter>const id_n idn</parameter>
+		<declaration>int rank,patient;
+int lost;
+int lostn=4;
+int list[np*3];//病人
+int prit[np*3];//优先级
+int ranklist[np*3];//类型
+int tail=0; //队尾
+bool rep[nn];//作为对照
+//形成随机数
+int rand(int n)
+{
+    int i=1;
+    double j=random(n);
+    while (i &lt; j)
+    {
+        i++;
+    }
+    return i-1;   
+}
+void delete(int p)
+{
+    int i=0;
+    int j=0;
+    for(i=0;i&lt;lptail;i++)
+    {
+        if (lplist[i]==p)
+        {
+            for(j=i;j&lt;lptail;j++)
+                {
+                    lplist[j]=lplist[j+1];
+                }
+                lptail=lptail-1;
+                load[idn-1]++;
+        }
+    }
+
+    for(i=0;i&lt;mptail;i++)
+    {
+        if (mplist[i]==p)
+        {
+            for(j=i;j&lt;mptail;j++)
+                {
+                    mplist[j]=mplist[j+1];
+                }
+                mptail=mptail-1;
+                load[idn-1]++;
+        }
+    }
+
+    for(i=0;i&lt;hptail;i++)
+    {
+        if (hplist[i]==p)
+        {
+            for(j=i;j&lt;hptail;j++)
+                {
+                    hplist[j]=hplist[j+1];
+                }
+                hptail=hptail-1;
+                load[idn-1]++;
+        }
+    }
+
+    for(i=0;i&lt;tail;i++)
+    {
+        if (list[i]==p)
+        {
+            for(j=i;j&lt;tail;j++)
+                {
+                    list[j]=list[j+1];
+                    ranklist[j]=ranklist[j+1];
+                    prit[j]=prit[j+1];
+                }
+                tail=tail-1;
+                i=0;
+        }
+    }
+}
+void inque(int p,int r)
+{
+    int i,j,t,pri;
+    int k=0;
+    if(tail==lostn)
+    {
+        list[tail-1]=0;
+        prit[tail-1]=0;
+        ranklist[tail-1]=0;
+        tail--;
+        lost++;
+     };//只能记住可记忆的长度
+    for(i=0;i&lt;tail;i++)
+    {
+     if (list[i]==p and ranklist[i]==r)
+        {
+            for(j=i;j&lt;tail;j++)
+            {
+            list[i]=list[i+1];
+            ranklist[i]=ranklist[i+1];
+            prit[i]=prit[i+1];
+            };
+            tail=tail-1;
+            pri=r+1;
+        }   
+    };//如果有重复的消息，则先把之前的那个去掉，然后把信息的优先级加1
+     for(t=tail-1;t&gt;=-1;t--)
+    {
+        if(k==0 and (t==-1 or prit[t]&gt;=pri)) 
+        {
+            ranklist[t+1]=r;
+            prit[t+1]=pri;
+            list[t+1]=p;
+            k = 1;     
+        }
+        if(t!=-1 and prit[t]&lt;pri) 
+        {
+            ranklist[t+1]=ranklist[t];
+            prit[t+1]=prit[t];
+            list[t+1]=list[t];
+        } 
+    }//加进去新消息以后排优先级  
+    tail=tail+1;
+}
+bool need(int p)
+{
+bool ok=0;
+int i;
+for(i=0;i&lt;hptail;i++)
+    {
+    if(hplist[i]==p)
+        {
+        ok=1;
+        }
+    }
+for(i=0;i&lt;mptail;i++)
+    {
+    if(mplist[i]==p)
+        {
+        ok=1;
+        }
+    }
+for(i=0;i&lt;lptail;i++)
+    {
+    if(lplist[i]==p)
+        {
+        ok=1;
+        }
+    }
+return ok;
+}
+
+//typedef int[0,hptail] id_hptail;       
+//typedef int[0,mptail] id_mptail; 
+//typedef int[0,lptail] id_lptail; 
+/*void outlist(int p,int r)
+{
+    int i=0;
+    int j=0;
+    if (r==1)
+    {
+        for(i=0;i&lt;lptail;i++)
+        {
+             if (lplist[i]==p)
+            {
+                for(j=i;j&lt;lptail;j++)
+                {
+                    lplist[i]=lplist[i+1];
+                }
+                lptail=lptail-1;
+            }
+        }
+    };
+    if (r==2)
+    {
+        for(i=0;i&lt;mptail;i++)
+        {
+             if (mplist[i]==p)
+            {
+                for(j=i;j&lt;mptail;j++)
+                {
+                    mplist[i]=mplist[i+1];
+                }
+                mptail=mptail-1;
+            }
+        }
+    };
+    if (r==3)
+    {
+        for(i=0;i&lt;hptail;i++)
+        {
+             if (hplist[i]==p)
+            {
+                for(j=i;j&lt;hptail;j++)
+                {
+                    hplist[i]=hplist[i+1];
+                }
+                hptail=hptail-1;
+            }
+        }
+    };
+}
+
+void outque()
+{    
+    int i;
+    for(i=0;i&lt;=tail-1;i++)
+   {
+        list[i]=list[i+1];
+        ranklist[i]=ranklist[i+1];
+        prit[i]=prit[i+1];
+    };
+   tail=tail-1;
+}*/</declaration>
+		<location id="id47" x="-4250" y="-3391">
+			<committed/>
+		</location>
+		<location id="id48" x="-3094" y="-3391" color="#ff00ff">
+			<committed/>
+		</location>
+		<location id="id49" x="-3332" y="-3391" color="#ff00ff">
+			<committed/>
+		</location>
+		<location id="id50" x="-4250" y="-3468" color="#00ff00">
+			<committed/>
+		</location>
+		<location id="id51" x="-3825" y="-3468">
+		</location>
+		<location id="id52" x="-3332" y="-3272" color="#ff00ff">
+			<name x="-3357" y="-3315">waitereply</name>
+			<committed/>
+		</location>
+		<location id="id53" x="-3094" y="-3468" color="#0000ff">
+			<committed/>
+		</location>
+		<init ref="id51"/>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-4428" y="-3417">tail&gt;0&amp;&amp;!need(list[0])</label>
+			<label kind="assignment" x="-4411" y="-3400">delete(list[0])</label>
+			<nail x="-4369" y="-3442"/>
+			<nail x="-4369" y="-3357"/>
+		</transition>
+		<transition color="#00ff00">
+			<source ref="id50"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-4233" y="-3629">hptail==0&amp;&amp;mptail==0&amp;&amp;lptail&gt;0&amp;&amp;inith[idn-1]==1</label>
+			<label kind="synchronisation" x="-3919" y="-3629">todeal[idn]!</label>
+			<label kind="assignment" x="-4233" y="-3604">numbersts=lplist[rand(lptail)],delete(numbersts),ini[idn-1]=1,on[numbersts-1]=idn</label>
+			<nail x="-4148" y="-3606"/>
+			<nail x="-3825" y="-3604"/>
+		</transition>
+		<transition color="#00ff00">
+			<source ref="id50"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-4131" y="-3748">hptail==0&amp;&amp;mptail&gt;0&amp;&amp;inith[idn-1]==1</label>
+			<label kind="synchronisation" x="-3859" y="-3748">todeal[idn]!</label>
+			<label kind="assignment" x="-4241" y="-3722">numbersts=mplist[rand(mptail)],delete(numbersts),ini[idn-1]=1,on[numbersts-1]=idn</label>
+			<nail x="-4267" y="-3723"/>
+			<nail x="-3740" y="-3723"/>
+		</transition>
+		<transition color="#0000ff">
+			<source ref="id53"/>
+			<target ref="id51"/>
+			<label kind="synchronisation" x="-3502" y="-3543">havereply?</label>
+			<label kind="assignment" x="-3502" y="-3519">ini[idn-1]=1</label>
+			<nail x="-3128" y="-3518"/>
+			<nail x="-3774" y="-3519"/>
+		</transition>
+		<transition color="#0000ff">
+			<source ref="id53"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="-3077" y="-3450">havereply!</label>
+			<label kind="assignment" x="-3077" y="-3433">inque(patient,rank)</label>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-4165" y="-3366">tail&gt;0&amp;&amp;inith[idn-1]==1&amp;&amp;need(list[0])</label>
+			<label kind="synchronisation" x="-4097" y="-3315">todeal[idn]!</label>
+			<label kind="assignment" x="-4301" y="-3340">numbersts=list[0],delete(numbersts),ini[idn-1]=1,on[numbersts-1]=idn</label>
+			<nail x="-4250" y="-3340"/>
+			<nail x="-3910" y="-3340"/>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id50"/>
+			<label kind="guard" x="-4275" y="-3451">tail==0</label>
+			<label kind="assignment" x="-4292" y="-3434">works[idn-1]=0</label>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id47"/>
+			<label kind="synchronisation" x="-4131" y="-3408">over[idn]?</label>
+			<label kind="assignment" x="-4046" y="-3408">ini[idn-1]=0</label>
+			<nail x="-3952" y="-3391"/>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id48"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-3375" y="-3220">works[idn-1]==1</label>
+			<label kind="assignment" x="-3477" y="-3220">ini[idn-1]=1</label>
+			<nail x="-3094" y="-3221"/>
+			<nail x="-3783" y="-3222"/>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id48"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-3536" y="-3169">works[idn-1]==0&amp;&amp;inith[idn-1]==1</label>
+			<label kind="synchronisation" x="-3256" y="-3169">todeal[idn]!</label>
+			<label kind="assignment" x="-3706" y="-3145">numbersts=list[0],delete(numbersts),ini[idn-1]=1,on[numbersts-1]=idn</label>
+			<nail x="-3052" y="-3340"/>
+			<nail x="-3052" y="-3144"/>
+			<nail x="-3834" y="-3145"/>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id49"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-3298" y="-3408">rank!=0&amp;&amp;tail&lt;lostn</label>
+			<label kind="assignment" x="-3281" y="-3391">inque(patient,rank)</label>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id51"/>
+			<target ref="id49"/>
+			<label kind="synchronisation" x="-3536" y="-3451">connect[idn]?</label>
+			<label kind="assignment" x="-3629" y="-3433">rank=typeptn,patient=numberptn,ini[idn-1]=0</label>
+			<nail x="-3697" y="-3434"/>
+			<nail x="-3332" y="-3434"/>
+		</transition>
+		<transition color="#00ff00">
+			<source ref="id50"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-4106" y="-3553">hptail==0&amp;&amp;mptail==0&amp;&amp;lptail==0</label>
+			<label kind="assignment" x="-4046" y="-3527">ini[idn-1]=1</label>
+			<nail x="-4148" y="-3527"/>
+			<nail x="-3868" y="-3527"/>
+		</transition>
+		<transition color="#00ff00">
+			<source ref="id50"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-4157" y="-3689">hptail&gt;0&amp;&amp;inith[idn-1]==1</label>
+			<label kind="synchronisation" x="-3953" y="-3689">todeal[idn]!</label>
+			<label kind="assignment" x="-4242" y="-3663">numbersts=hplist[rand(hptail)],delete(numbersts),ini[idn-1]=1,on[numbersts-1]=idn</label>
+			<nail x="-4208" y="-3672"/>
+			<nail x="-3800" y="-3672"/>
+		</transition>
+		<transition color="#00ff00">
+			<source ref="id51"/>
+			<target ref="id50"/>
+			<label kind="guard" x="-4148" y="-3468">works[idn-1]==0</label>
+			<label kind="synchronisation" x="-4020" y="-3468">voice?</label>
+			<label kind="assignment" x="-3969" y="-3468">ini[idn-1]=0</label>
+			<nail x="-4055" y="-3468"/>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id49"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-3553" y="-3390">rank==0</label>
+			<label kind="synchronisation" x="-3485" y="-3390">overtalk[patient]!</label>
+			<label kind="assignment" x="-3536" y="-3373">ini[idn-1]=1</label>
+			<nail x="-3629" y="-3391"/>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id52"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-3264" y="-3297">reply==rep</label>
+			<label kind="assignment" x="-3290" y="-3272">inque(patient,rank)</label>
+			<nail x="-3128" y="-3272"/>
+		</transition>
+		<transition color="#ff00ff">
+			<source ref="id52"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-3638" y="-3297">reply!=rep</label>
+			<label kind="assignment" x="-3570" y="-3297">ini[idn-1]=1,reply=rep</label>
+			<nail x="-3646" y="-3271"/>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id52"/>
+			<label kind="guard" x="-3383" y="-3365">rank!=0&amp;&amp;tail&gt;=lostn</label>
+			<label kind="synchronisation" x="-3357" y="-3332">transcall!</label>
+			<label kind="assignment" x="-3425" y="-3349">numberntn=patient,typentn=rank</label>
+		</transition>
+		<transition color="#0000ff">
+			<source ref="id51"/>
+			<target ref="id53"/>
+			<label kind="guard" x="-3493" y="-3493">tail&lt;lostn</label>
+			<label kind="synchronisation" x="-3425" y="-3493">transcall?</label>
+			<label kind="assignment" x="-3604" y="-3468">reply[idn-1]=1,patient=numberntn,rank=typentn,ini[idn-1]=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>TH</name>
+		<parameter>const id_n idn</parameter>
+		<declaration>/**衡量指标**/
+//大概的工作强度等于处理的任务数*12.5/1440
+int dealcount;
+int patient;
+clock cl;
+const int ts=10;//护士处理一个警报花的时间
+const int te=15;
+</declaration>
+		<location id="id54" x="-14008" y="-14909">
+			<name x="-13991" y="-14918">end</name>
+			<committed/>
+		</location>
+		<location id="id55" x="-14433" y="-14909">
+			<name x="-14526" y="-14935">station</name>
+			<committed/>
+		</location>
+		<location id="id56" x="-14220" y="-14909">
+			<name x="-14237" y="-14943">hpbegin</name>
+			<label kind="invariant" x="-14271" y="-14883">cl&lt;=te*load[idn-1]</label>
+		</location>
+		<location id="id57" x="-14909" y="-14909">
+			<name x="-14919" y="-14943">start</name>
+		</location>
+		<init ref="id57"/>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id57"/>
+			<label kind="guard" x="-14560" y="-14815">ini[idn-1]==1</label>
+			<label kind="synchronisation" x="-14450" y="-14815">over[idn]!</label>
+			<label kind="assignment" x="-14679" y="-14781">inith[idn-1]=1,on[patient-1]=0,dealcount=dealcount+load[idn-1],load[idn-1]=0</label>
+			<nail x="-14007" y="-14791"/>
+			<nail x="-14908" y="-14791"/>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id56"/>
+			<label kind="synchronisation" x="-14390" y="-14909">deals[patient]!</label>
+			<label kind="assignment" x="-14288" y="-14909">cl=0</label>
+		</transition>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-14178" y="-14935">cl&gt;=ts*load[idn-1]</label>
+			<label kind="synchronisation" x="-14169" y="-14909">deale[patient]!</label>
+			<nail x="-14126" y="-14910"/>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="-14739" y="-14935">todeal[idn]?</label>
+			<label kind="assignment" x="-14849" y="-14909">patient=numbersts,works[idn-1]=1,inith[idn-1]=0</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+//Process = Template();
+// List one or more processes to be composed into a system.
+system AR_hp,AR_mp,AR_lp,AR_other,ACON,AM,P_hp,P_mp,P_lp,P_ask,AC,TH,AD,BEGIN;</system>
+	<queries>
+		<query>
+			<formula>simulate 1 [&lt;=1440] {works[0]}
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E[ &lt;=1440;400](max:TH(1).dealcount*12.5/1440)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E[ &lt;=1440;400](max:AD(1).lost)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E[ &lt;=1440;400](max:doublepush)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>
